@@ -1,9 +1,11 @@
 require('dotenv').config();
 const GoogleSpreadsheet = require('google-spreadsheet');
 const async = require('async');
+const table = require('markdown-table');
 
 const doc = new GoogleSpreadsheet(process.env['GOOGLE_SHEET_ID']);
 let sheet;
+const data = [];
 
 async.series([
   function setAuth(step) {
@@ -16,12 +18,27 @@ async.series([
   },
   function getInfoAndWorksheets(step) {
     doc.getInfo(function(err, info) {
-      console.log(`Loaded doc: ${info.title} by ${info.author.email}`);
       sheet = info.worksheets[0];
-      console.log(
-        `Sheet 1: ${sheet.title} ${sheet.rowCount}x${sheet.colCount}`,
-      );
+
       step();
     });
+  },
+  function getCells(step) {
+    doc.getCells(sheet.id, function(err, cells) {
+      cells.map(c => {
+        const x = c.col - 1;
+        const y = c.row - 1;
+        if (!Array.isArray(data[y])) {
+          data[y] = [];
+        }
+        data[y][x] = c.value;
+      });
+
+      step();
+    });
+  },
+  function makeTable(step) {
+    const md = table(data);
+    console.log(md);
   },
 ]);
